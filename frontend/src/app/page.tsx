@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import { GraduationCap, Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("admin@college.edu");
   const [password, setPassword] = useState("Admin@123");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
