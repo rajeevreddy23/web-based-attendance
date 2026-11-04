@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: attendance_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: attendance_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: attendance_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PROJECT_NAME=Web-Based Period-Wise Student Attendance Management
+      - ENVIRONMENT=production
+      - API_V1_STR=/api/v1
+      - SECRET_KEY=capstone-super-secret-key-change-in-production-min-32-chars-long
+      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/attendance_db
+      - CAMERA_INDEX=0
+      - PROCESS_EVERY_N_FRAMES=3
+      - CONSECUTIVE_FRAMES_REQUIRED=3
+      - COSINE_DISTANCE_THRESHOLD=0.45
+      - BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+    command: >
+      sh -c "python app/db/init_db.py &&
+             python app/db/seed_embeddings.py &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: attendance_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
