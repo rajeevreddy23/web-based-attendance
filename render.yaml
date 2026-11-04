@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: attendance-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: PROJECT_NAME
+        value: "Web-Based Period-Wise Student Attendance Management"
+      - key: ENVIRONMENT
+        value: production
+      - key: API_V1_STR
+        value: /api/v1
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: attendance-db
+          property: connectionString
+      - key: BACKEND_CORS_ORIGINS
+        value: "*"
+      - key: CAMERA_INDEX
+        value: "0"
+      - key: PROCESS_EVERY_N_FRAMES
+        value: "3"
+      - key: CONSECUTIVE_FRAMES_REQUIRED
+        value: "3"
+      - key: COSINE_DISTANCE_THRESHOLD
+        value: "0.45"
+
+databases:
+  - name: attendance-db
+    databaseName: attendance_db
+    user: postgres
+    plan: free
+    region: oregon
