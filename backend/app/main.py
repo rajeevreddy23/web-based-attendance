@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.db.init_db import init_db
 from app.api.v1.router import api_router
 from app.services.scheduler_service import start_scheduler, stop_scheduler
 
@@ -15,8 +17,17 @@ logger = logging.getLogger("attendance_backend")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: start APScheduler for period-end absent marking & reporting
-    logger.info("Initializing application lifespan...")
+    # Startup: auto-initialize tables and seed data if not present
+    logger.info("Initializing application lifespan & database...")
+    try:
+        db = SessionLocal()
+        init_db(db)
+        db.close()
+        logger.info("Database initialization verified successfully.")
+    except Exception as e:
+        logger.warning(f"Database auto-init note: {e}")
+
+    # Startup APScheduler for period-end absent marking & reporting
     start_scheduler()
     yield
     # Shutdown: gracefully terminate background tasks

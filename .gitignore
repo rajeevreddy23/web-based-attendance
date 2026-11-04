@@ -12,6 +12,7 @@ ENV/
 # Data & Models
 backend/data/models/*
 !backend/data/models/.gitkeep
+!backend/data/models/ssa_svm_model.pkl
 backend/data/embeddings/*
 !backend/data/embeddings/.gitkeep
 backend/data/reports/*
