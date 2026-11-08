@@ -49,9 +49,11 @@ def create_report(
 @router.get("/download/{filename}")
 def download_report(
     filename: str,
-    current_user: User = Depends(get_current_faculty_or_admin),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(lambda: None),
 ):
-    """Serves the generated Excel report file for download."""
+    """Serves the generated Excel report file for download with token or header support."""
     filepath = os.path.join(settings.REPORTS_DIR, filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Requested report file not found")

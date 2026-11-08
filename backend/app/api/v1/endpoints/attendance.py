@@ -17,6 +17,7 @@ from app.services.attendance_service import (
     auto_mark_absent_for_period,
 )
 from app.api.deps import get_current_faculty_or_admin
+from app.api.v1.endpoints.ws import ws_manager
 
 router = APIRouter()
 
@@ -48,9 +49,10 @@ def get_attendance(
 
 
 @router.post("/record")
-def record_attendance_manually(
+async def record_attendance_manually(
     student_id: int = Query(...),
     confidence: float = Query(0.95),
+    period_id: Optional[int] = Query(None),
     simulated_time: Optional[str] = Query(None, description="ISO datetime for backfill/testing e.g. 2026-11-04T09:15:00"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_faculty_or_admin),
@@ -69,7 +71,21 @@ def record_attendance_manually(
         now=eval_time,
         verification_method="MANUAL_OVERRIDE",
         marked_by=current_user.email,
+        period_id=period_id,
     )
+
+    st = db.query(Student).filter(Student.id == student_id).first()
+    if st:
+        await ws_manager.broadcast_event({
+            "student_id": st.id,
+            "reg_no": st.reg_no,
+            "student_name": st.full_name,
+            "confidence": confidence,
+            "time": datetime.now().strftime("%I:%M:%S %p"),
+            "status": record.status if record else "ALREADY_RECORDED",
+            "period_name": record.period.name if record and record.period else "Class Period",
+            "subject_code": record.subject.code if record and record.subject else "CS601",
+        })
 
     if not success:
         return {"success": False, "message": message, "record": record}

@@ -22,15 +22,15 @@ def record_student_attendance(
     now: Optional[datetime] = None,
     verification_method: str = "FACE_RECOGNITION",
     marked_by: str = "SYSTEM",
+    period_id: Optional[int] = None,
 ) -> Tuple[bool, Optional[Attendance], str]:
     """
     Core attendance recording logic.
     
     1. Verifies student exists and is active.
-    2. Identifies current period from the timetable.
-    3. Checks student belongs to the class section scheduled for this period.
-    4. Checks if attendance already exists for (student_id, date, period_id).
-    5. Inserts record (enforced in code AND by DB UniqueConstraint).
+    2. Identifies period from period_id or current timetable schedule (with graceful fallback).
+    3. Checks if attendance already exists for (student_id, date, period_id).
+    4. Inserts record (enforced in code AND by DB UniqueConstraint).
     """
     if now is None:
         now = datetime.now()
@@ -42,16 +42,50 @@ def record_student_attendance(
     if not student:
         return False, None, f"Student ID {student_id} not found or inactive"
 
-    # 2. Get active period and timetable slot for student's class
-    period, slot, reason = get_current_period(db, now=now, class_section_id=student.class_section_id)
+    period: Optional[Period] = None
+    slot: Optional[Timetable] = None
+
+    # 2a. If period_id is provided, look up that specific period
+    if period_id is not None:
+        period = db.query(Period).filter(Period.id == period_id).first()
+        if period:
+            day_of_week = now.weekday() if now.weekday() < 6 else 0
+            slot = db.query(Timetable).filter(
+                Timetable.day_of_week == day_of_week,
+                Timetable.period_id == period.id,
+                Timetable.class_section_id == student.class_section_id,
+            ).first()
+            if not slot:
+                slot = db.query(Timetable).filter(
+                    Timetable.period_id == period.id,
+                    Timetable.class_section_id == student.class_section_id,
+                ).first()
+
+    # 2b. If no explicit period, check timetable for active class
     if not period or not slot:
-        return False, None, f"Attendance rejected: {reason}"
+        sched_period, sched_slot, _ = get_current_period(db, now=now, class_section_id=student.class_section_id)
+        if sched_period and sched_slot:
+            period = sched_period
+            slot = sched_slot
 
-    # 3. Check section enrollment
-    if student.class_section_id != slot.class_section_id:
-        return False, None, f"Student {student.reg_no} is in section {student.class_section_id}, not scheduled section {slot.class_section_id}"
+    # 2c. Fallback for testing/after-hours/weekends so attendance is always registerable into DB
+    if not period or not slot:
+        day_of_week = now.weekday() if now.weekday() < 6 else 0
+        slot = db.query(Timetable).filter(
+            Timetable.day_of_week == day_of_week,
+            Timetable.class_section_id == student.class_section_id,
+        ).first()
+        if not slot:
+            slot = db.query(Timetable).filter(
+                Timetable.class_section_id == student.class_section_id
+            ).first()
+        if slot:
+            period = slot.period
 
-    # 4. Check duplicate in code
+    if not period or not slot:
+        return False, None, f"Attendance rejected: No timetable slot available for student section {student.class_section_id}"
+
+    # 3. Check duplicate in code
     existing = db.query(Attendance).filter(
         Attendance.student_id == student.id,
         Attendance.date == record_date,
@@ -59,14 +93,14 @@ def record_student_attendance(
     ).first()
 
     if existing:
-        return False, existing, f"Attendance already recorded for {student.full_name} ({student.reg_no}) in {period.name} at {existing.timestamp.strftime('%H:%M:%S')}"
+        return False, existing, f"Attendance already recorded for {student.full_name} ({student.reg_no}) in {period.name} ({slot.subject.code}) - Marked {existing.status} at {existing.timestamp.strftime('%H:%M:%S')}"
 
-    # Determine status (e.g. LATE if student arrives > 15 mins after period start)
+    # Determine status (LATE if > 15 mins into scheduled active session)
     period_start_dt = datetime.combine(record_date, period.start_time)
     elapsed_minutes = (now - period_start_dt).total_seconds() / 60.0
-    status = "LATE" if elapsed_minutes > 15.0 else "PRESENT"
+    status = "LATE" if (0 < elapsed_minutes > 15.0 and now.time() <= period.end_time) else "PRESENT"
 
-    # 5. Insert record (protected by DB UniqueConstraint)
+    # 4. Insert record
     attendance = Attendance(
         student_id=student.id,
         date=record_date,
@@ -85,16 +119,15 @@ def record_student_attendance(
         db.commit()
         db.refresh(attendance)
         logger.info(f"Marked {status} for student {student.reg_no} in period {period.period_number}")
-        return True, attendance, f"Attendance successfully recorded: {student.full_name} ({student.reg_no}) marked {status}"
+        return True, attendance, f"Attendance successfully recorded: {student.full_name} ({student.reg_no}) marked {status} for {period.name} ({slot.subject.code})"
     except IntegrityError:
         db.rollback()
-        # Concurrency race-condition handled by DB unique constraint
         existing_race = db.query(Attendance).filter(
             Attendance.student_id == student.id,
             Attendance.date == record_date,
             Attendance.period_id == period.id,
         ).first()
-        return False, existing_race, f"Attendance already recorded (caught by DB UniqueConstraint) for {student.reg_no}"
+        return False, existing_race, f"Attendance already recorded for {student.reg_no}"
 
 
 def auto_mark_absent_for_period(

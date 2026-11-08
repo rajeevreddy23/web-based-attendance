@@ -4,6 +4,9 @@ from pydantic import AnyHttpUrl, field_validator
 import os
 
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DEFAULT_DB_PATH = os.path.join(BASE_DIR, "attendance.db").replace("\\", "/")
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Web-Based Period-Wise Student Attendance Management"
     ENVIRONMENT: str = "development"
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours
 
     # Database
-    DATABASE_URL: str = "sqlite:///./attendance.db"
+    DATABASE_URL: str = f"sqlite:///{DEFAULT_DB_PATH}"
 
     # Camera & ML Recognition
     CAMERA_INDEX: int = 0
@@ -23,7 +26,7 @@ class Settings(BaseSettings):
     FACE_DETECTION_CONFIDENCE: float = 0.80
 
     # Paths
-    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    BASE_DIR: str = BASE_DIR
     MODELS_DIR: str = os.path.join(BASE_DIR, "data", "models")
     EMBEDDINGS_DIR: str = os.path.join(BASE_DIR, "data", "embeddings")
     REPORTS_DIR: str = os.path.join(BASE_DIR, "data", "reports")

@@ -48,7 +48,7 @@ def get_students(
 def create_student(
     student_in: StudentCreate,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_faculty_or_admin),
 ):
     # Verify class section exists
     sec = db.query(ClassSection).filter(ClassSection.id == student_in.class_section_id).first()
@@ -127,7 +127,7 @@ def update_student(
     student_id: int,
     student_update: StudentUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_faculty_or_admin),
 ):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
@@ -161,7 +161,7 @@ def update_student(
 def delete_student(
     student_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_faculty_or_admin),
 ):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getAuthToken } from "@/lib/api";
 import {
   FileSpreadsheet,
   Download,
@@ -38,16 +38,24 @@ export default function ReportsPage() {
 
       setLastGenerated(res.filename);
 
-      // Trigger automatic browser download
+      // Trigger authenticated browser download
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const downloadLink = `${API_URL}/reports/download/${res.filename}`;
-      
+      const token = getAuthToken();
+      const fileRes = await fetch(`${API_URL}/reports/download/${res.filename}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!fileRes.ok) {
+        throw new Error("Report generated but download failed. Please check server connection.");
+      }
+      const blob = await fileRes.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = downloadLink;
+      a.href = blobUrl;
       a.download = res.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err: any) {
       alert(err.message || "Failed to generate report");
     } finally {

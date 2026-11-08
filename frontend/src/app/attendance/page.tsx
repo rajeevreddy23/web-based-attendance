@@ -12,6 +12,8 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  PlusCircle,
+  UserCheck,
 } from "lucide-react";
 
 interface AttendanceRecord {
@@ -40,10 +42,18 @@ interface AttendanceRecord {
   marked_by: string;
 }
 
+interface StudentOption {
+  id: number;
+  reg_no: string;
+  full_name: string;
+}
+
 export default function AttendancePage() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split("T")[0]);
+  const [sectionFilter, setSectionFilter] = useState("");
   const [periodFilter, setPeriodFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,11 +64,18 @@ export default function AttendancePage() {
   const [correctionReason, setCorrectionReason] = useState("");
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
 
+  // Manual Mark Attendance Modal State
+  const [showMarkModal, setShowMarkModal] = useState(false);
+  const [markStudentId, setMarkStudentId] = useState("");
+  const [markPeriodId, setMarkPeriodId] = useState("1");
+  const [submittingMark, setSubmittingMark] = useState(false);
+
   const fetchRecords = async () => {
     setLoading(true);
     try {
       let url = `/attendance/?date=${dateFilter}`;
       if (periodFilter) url += `&period_id=${periodFilter}`;
+      if (sectionFilter) url += `&class_section_id=${sectionFilter}`;
       const data = await apiRequest<AttendanceRecord[]>(url);
       setRecords(data);
     } catch (err) {
@@ -68,9 +85,22 @@ export default function AttendancePage() {
     }
   };
 
+  const fetchStudents = async () => {
+    try {
+      const data = await apiRequest<StudentOption[]>("/students/");
+      setStudents(data);
+      if (data.length > 0 && !markStudentId) {
+        setMarkStudentId(String(data[0].id));
+      }
+    } catch (err) {
+      console.error("Failed to load students", err);
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
-  }, [dateFilter, periodFilter]);
+    fetchStudents();
+  }, [dateFilter, periodFilter, sectionFilter]);
 
   const handleApplyCorrection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,13 +125,49 @@ export default function AttendancePage() {
     }
   };
 
+  const handleManualMark = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!markStudentId) return;
+    setSubmittingMark(true);
+    try {
+      const res = await apiRequest<any>(
+        `/attendance/record?student_id=${markStudentId}&period_id=${markPeriodId}&confidence=0.98`,
+        { method: "POST" }
+      );
+      alert(res.message);
+      setShowMarkModal(false);
+      fetchRecords();
+    } catch (err: any) {
+      alert(err.message || "Failed to mark attendance");
+    } finally {
+      setSubmittingMark(false);
+    }
+  };
+
+  const handleAutoMarkAbsent = async () => {
+    const periodToMark = periodFilter || "1";
+    if (!confirm(`Mark unrecorded students as ABSENT for Period ${periodToMark} today?`)) {
+      return;
+    }
+    try {
+      const res = await apiRequest<any>(
+        `/attendance/auto-absent?period_id=${periodToMark}&class_section_id=1&attendance_date=${dateFilter}`,
+        { method: "POST" }
+      );
+      alert(res.message);
+      fetchRecords();
+    } catch (err: any) {
+      alert(err.message || "Failed to auto mark absent");
+    }
+  };
+
   const filteredRecords = records.filter((r) => {
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesSearch =
       !searchQuery ||
-      r.student?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.student?.reg_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.subject?.code.toLowerCase().includes(searchQuery.toLowerCase());
+      r.student?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.student?.reg_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.subject?.code?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -116,17 +182,36 @@ export default function AttendancePage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchRecords}
-          className="flex items-center space-x-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition-all self-start md:self-auto"
-        >
-          <RefreshCw className="w-4 h-4 text-slate-500" />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center space-x-2.5">
+          <button
+            onClick={() => setShowMarkModal(true)}
+            className="flex items-center space-x-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Mark Record</span>
+          </button>
+
+          <button
+            onClick={handleAutoMarkAbsent}
+            className="flex items-center space-x-2 px-3.5 py-2 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-semibold shadow-sm transition-all"
+            title="Auto-marks absent for unrecorded students"
+          >
+            <UserCheck className="w-4 h-4 text-rose-600" />
+            <span>Auto-Mark Absent</span>
+          </button>
+
+          <button
+            onClick={fetchRecords}
+            className="flex items-center space-x-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition-all"
+          >
+            <RefreshCw className="w-4 h-4 text-slate-500" />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
             Date
@@ -137,6 +222,21 @@ export default function AttendancePage() {
             onChange={(e) => setDateFilter(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
           />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Class Section
+          </label>
+          <select
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+          >
+            <option value="">All Class Sections</option>
+            <option value="1">CSE-6A (Semester 6)</option>
+            <option value="2">CSE-6B (Semester 6)</option>
+          </select>
         </div>
 
         <div>
@@ -285,6 +385,70 @@ export default function AttendancePage() {
           </table>
         </div>
       </div>
+
+      {/* Manual Record Modal */}
+      {showMarkModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100">
+            <h3 className="font-bold text-base text-slate-800 mb-1">Record Attendance Manually</h3>
+            <p className="text-xs text-slate-500 mb-4">Select student and period to record attendance</p>
+
+            <form onSubmit={handleManualMark} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Student
+                </label>
+                <select
+                  value={markStudentId}
+                  onChange={(e) => setMarkStudentId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {students.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.full_name} ({st.reg_no})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Period / Subject
+                </label>
+                <select
+                  value={markPeriodId}
+                  onChange={(e) => setMarkPeriodId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="1">Period 1 (09:00 - 09:50) CS601: Machine Learning</option>
+                  <option value="2">Period 2 (09:50 - 10:40) CS602: Cloud Computing</option>
+                  <option value="3">Period 3 (10:55 - 11:45) CS603: Computer Networks</option>
+                  <option value="4">Period 4 (11:45 - 12:35) CS604: Database Systems</option>
+                  <option value="6">Period 5 (13:25 - 14:15) CS605: Software Engineering</option>
+                  <option value="7">Period 6 (14:15 - 15:05) CS606: Web Technologies</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMarkModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingMark}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow transition-all disabled:opacity-50"
+                >
+                  {submittingMark ? "Recording..." : "Record Attendance"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Manual Correction Modal */}
       {selectedRecord && (

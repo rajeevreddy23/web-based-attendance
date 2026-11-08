@@ -30,7 +30,8 @@ class MobileNetFeatureExtractor:
         self.features = base_model.features
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # Projection head to embedding_dim with L2 normalization
+        # Projection head to embedding_dim with L2 normalization (deterministic initialization)
+        torch.manual_seed(42)
         self.projection = nn.Sequential(
             nn.Linear(1280, 512),
             nn.BatchNorm1d(512),
