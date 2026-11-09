@@ -12,7 +12,7 @@ The system automates collegiate attendance by continuously acquiring classroom v
 
 ---
 
-## ⚡ 1-Click Quick Launch (Windows)
+## 🚀 1-Click Quick Launch (Windows)
 
 For instant setup and startup without manual terminal commands:
 
