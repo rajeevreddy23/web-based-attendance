@@ -1,8 +1,25 @@
 # Web-Based Period-Wise Student Attendance Management Using Real-Time Facial Recognition
 
-A production-ready, full-stack Capstone Project extending research on MobileNet deep facial embeddings and Salp Swarm Algorithm (SSA) optimized Support Vector Machines (SVM). 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/rajeevreddy23/web-based-attendance)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+A production-ready, full-stack Capstone & IEEE Research Project extending real-time facial recognition using MobileNet deep facial embeddings and Salp Swarm Algorithm (SSA) optimized Support Vector Machines (SVM).
 
 The system automates collegiate attendance by continuously acquiring classroom video feeds, isolating and vectorizing facial representations, verifying active periods against a dynamic timetable matrix, enforcing strict non-duplication rules (at both application and database engine tiers), streaming live recognition events via WebSockets, and generating multi-sheet formatted Excel reports.
+
+---
+
+## ⚡ 1-Click Quick Launch (Windows)
+
+For instant setup and startup without manual terminal commands:
+
+- **First-Time Setup**: Double-click [`setup.bat`](setup.bat)
+  - Automatically verifies Python & Node.js, configures virtual environments, installs Python & npm packages, and initialises the database with pre-trained SSA-SVM weights.
+- **Run the System**: Double-click [`start.bat`](start.bat)
+  - Concurrently boots the FastAPI backend on `http://localhost:8000` and the Next.js frontend on `http://localhost:3000`.
 
 ---
 
@@ -211,3 +228,33 @@ docker-compose up --build -d
 | **Low recognition accuracy** | Extreme lighting changes or low training frames. | 1. Capture 20+ face frames per student with slight head angle variations.<br>2. Click **"Train SSA-SVM Model"** in the Students tab to re-run optimization. |
 | **CORS errors in browser console** | Frontend origin missing from backend CORS list. | Check `BACKEND_CORS_ORIGINS` in `.env`. Ensure `http://localhost:3000` is included. |
 | **`IntegrityError: UNIQUE constraint failed`** | Multiple simultaneous recognition requests for same period. | This is expected and safe: the database constraint guarantees zero duplicate attendance records under high concurrency. |
+
+---
+
+## 9. Cloud Deployment
+
+### Backend (Render / Railway)
+- Pre-configured [`render.yaml`](render.yaml) blueprint included.
+- Set environment variables `DATABASE_URL`, `SECRET_KEY`, and `BACKEND_CORS_ORIGINS`.
+
+### Frontend (Vercel)
+- Root directory set to `frontend`.
+- Set `NEXT_PUBLIC_API_URL` to your production backend URL (e.g. `https://your-backend.onrender.com`).
+
+---
+
+## 10. IEEE Conference Research Paper Deliverables
+
+This repository includes full publication-ready manuscripts and assets formatted according to standard IEEE 2-column conference proceedings:
+
+- 📄 **Full Markdown Manuscript**: [`CONFERENCE_PAPER.md`](CONFERENCE_PAPER.md)
+- 📝 **Microsoft Word Document**: [`Web_Based_Period_Wise_Attendance_Conference_Paper.docx`](Web_Based_Period_Wise_Attendance_Conference_Paper.docx)
+- 📜 **LaTeX Source**: [`IEEE_Conference_Paper.tex`](IEEE_Conference_Paper.tex)
+- 🌐 **Interactive HTML Paper**: [`IEEE_Conference_Paper.html`](IEEE_Conference_Paper.html)
+- 📊 **High-Res Vector Figures Generator (300 DPI)**: [`generate_figures.py`](generate_figures.py)
+  - System Architecture diagram
+  - MobileNet + SSA-SVM Recognition Pipeline
+  - Salp Swarm Algorithm mathematical convergence & exploration-exploitation curve
+  - Confusion matrix & Precision-Recall curves
+  - Performance latency & FPS benchmark chart
+
