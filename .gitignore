@@ -43,3 +43,11 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Research & Conference Paper Assets
+CONFERENCE_PAPER.md
+IEEE_Conference_Paper.*
+Web_Based_Period_Wise_Attendance_Conference_Paper.docx
+generate_docx.py
+generate_figures.py
+conference_paper_figures/

@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A production-ready, full-stack Capstone & IEEE Research Project extending real-time facial recognition using MobileNet deep facial embeddings and Salp Swarm Algorithm (SSA) optimized Support Vector Machines (SVM).
+A production-ready, full-stack web application for period-wise student attendance management using real-time facial recognition powered by MobileNet deep facial embeddings and Salp Swarm Algorithm (SSA) optimized Support Vector Machines (SVM).
 
 The system automates collegiate attendance by continuously acquiring classroom video feeds, isolating and vectorizing facial representations, verifying active periods against a dynamic timetable matrix, enforcing strict non-duplication rules (at both application and database engine tiers), streaming live recognition events via WebSockets, and generating multi-sheet formatted Excel reports.
 
@@ -188,7 +188,7 @@ pytest backend/tests/test_attendance_and_rules.py -v
 python backend/benchmark_eval.py
 ```
 
-### Official Evaluation Summary Table (Ready for Capstone Report)
+### System Benchmark & Performance Metrics
 
 | Metric / Experimental Parameter | Target Threshold | Measured Result | Evaluation Status |
 |---|---|---|---|
@@ -240,21 +240,3 @@ docker-compose up --build -d
 ### Frontend (Vercel)
 - Root directory set to `frontend`.
 - Set `NEXT_PUBLIC_API_URL` to your production backend URL (e.g. `https://your-backend.onrender.com`).
-
----
-
-## 10. IEEE Conference Research Paper Deliverables
-
-This repository includes full publication-ready manuscripts and assets formatted according to standard IEEE 2-column conference proceedings:
-
-- 📄 **Full Markdown Manuscript**: [`CONFERENCE_PAPER.md`](CONFERENCE_PAPER.md)
-- 📝 **Microsoft Word Document**: [`Web_Based_Period_Wise_Attendance_Conference_Paper.docx`](Web_Based_Period_Wise_Attendance_Conference_Paper.docx)
-- 📜 **LaTeX Source**: [`IEEE_Conference_Paper.tex`](IEEE_Conference_Paper.tex)
-- 🌐 **Interactive HTML Paper**: [`IEEE_Conference_Paper.html`](IEEE_Conference_Paper.html)
-- 📊 **High-Res Vector Figures Generator (300 DPI)**: [`generate_figures.py`](generate_figures.py)
-  - System Architecture diagram
-  - MobileNet + SSA-SVM Recognition Pipeline
-  - Salp Swarm Algorithm mathematical convergence & exploration-exploitation curve
-  - Confusion matrix & Precision-Recall curves
-  - Performance latency & FPS benchmark chart
-
