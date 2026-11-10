@@ -5,11 +5,11 @@ echo ======================================================================
 
 echo.
 echo [*] Launching FastAPI Backend Server on http://localhost:8000...
-start "Attendance Backend (FastAPI)" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
+start "Attendance Backend (FastAPI)" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate.bat && python -m uvicorn app.main:app --port 8000"
 
 echo.
 echo [*] Launching Next.js Frontend on http://localhost:3005...
-start "Attendance Frontend (Next.js)" cmd /k "cd /d %~dp0frontend && npm run dev -- -p 3005"
+start "Attendance Frontend (Next.js)" cmd /k "cd /d %~dp0frontend && npm run dev"
 
 echo.
 echo ======================================================================
