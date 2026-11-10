@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -12,21 +13,32 @@ import {
   Camera,
   Cpu,
   GraduationCap,
+  UserCheck,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   // Don't show sidebar on login page
   if (pathname === "/") return null;
 
-  const navItems = [
+  const isStudent = user?.role === "student";
+
+  const hostNavItems = [
     { label: "Live Monitoring", href: "/dashboard", icon: Camera },
     { label: "Attendance Records", href: "/attendance", icon: CalendarCheck },
     { label: "Students & Capture", href: "/students", icon: Users },
     { label: "Class Timetable", href: "/timetable", icon: Calendar },
     { label: "Excel Reports", href: "/reports", icon: FileSpreadsheet },
   ];
+
+  const studentNavItems = [
+    { label: "My Attendance Portal", href: "/portal", icon: GraduationCap },
+    { label: "My Class Timetable", href: "/timetable", icon: Calendar },
+  ];
+
+  const navItems = isStudent ? studentNavItems : hostNavItems;
 
   return (
     <aside className="w-64 bg-slate-900 text-white min-h-screen flex flex-col border-r border-slate-800">
@@ -36,7 +48,9 @@ export const Sidebar: React.FC = () => {
         </div>
         <div>
           <h1 className="font-bold text-base leading-tight">SmartAttend</h1>
-          <p className="text-xs text-slate-400">Facial Recognition System</p>
+          <p className="text-xs text-slate-400">
+            {isStudent ? "Student Self Portal" : "Faculty & Host Portal"}
+          </p>
         </div>
       </div>
 
@@ -65,9 +79,11 @@ export const Sidebar: React.FC = () => {
         <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
           <div className="flex items-center space-x-2 text-xs text-emerald-400 font-semibold mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>MobileNet + SSA-SVM</span>
+            <span>{isStudent ? "Face ID Verified" : "MobileNet + SSA-SVM"}</span>
           </div>
-          <p className="text-[11px] text-slate-400">Active Real-Time Gating</p>
+          <p className="text-[11px] text-slate-400">
+            {isStudent ? `Roll No: ${user?.reg_no || "Registered"}` : "Active Real-Time Gating"}
+          </p>
         </div>
       </div>
     </aside>

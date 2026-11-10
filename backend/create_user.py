@@ -23,7 +23,14 @@ def add_user(email: str, name: str, password: str, role: str, emp_id: str = None
             print(f"[!] Error: A user with email '{email}' already exists.")
             return False
 
-        user_role = UserRole.ADMIN if role.strip().lower() == "admin" else UserRole.FACULTY
+        r_lower = role.strip().lower()
+        if r_lower == "admin":
+            user_role = UserRole.ADMIN
+        elif r_lower == "student":
+            user_role = UserRole.STUDENT
+        else:
+            user_role = UserRole.FACULTY
+
         user = User(
             email=email.strip().lower(),
             hashed_password=get_password_hash(password),
@@ -66,7 +73,7 @@ def main():
     parser.add_argument("--email", type=str, help="Institutional email address")
     parser.add_argument("--name", type=str, help="Full Name")
     parser.add_argument("--password", type=str, help="Login Password")
-    parser.add_argument("--role", type=str, choices=["admin", "faculty"], default="faculty", help="Role (admin or faculty)")
+    parser.add_argument("--role", type=str, choices=["admin", "faculty", "student"], default="faculty", help="Role (admin, faculty, student)")
     parser.add_argument("--emp-id", type=str, help="Employee ID (faculty only, e.g. FAC005)")
     parser.add_argument("--dept", type=str, default="CSE", help="Department (default: CSE)")
     parser.add_argument("--desig", type=str, default="Assistant Professor", help="Designation")

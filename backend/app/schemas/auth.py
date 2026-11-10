@@ -4,7 +4,7 @@ from app.models.user import UserRole
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str  # Accepts either institutional email or student registration/roll number
     password: str
 
 
@@ -14,6 +14,8 @@ class Token(BaseModel):
     role: str
     full_name: str
     email: str
+    student_id: Optional[int] = None
+    reg_no: Optional[str] = None
 
 
 class TokenPayload(BaseModel):

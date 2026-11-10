@@ -1,15 +1,132 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from app.core.database import get_db
+from app.core.security import get_password_hash
 from app.models.student import Student
 from app.models.face_embedding import FaceEmbedding
 from app.models.class_section import ClassSection
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.models.attendance import Attendance
+from app.models.subject import Subject
+from app.models.period import Period
 from app.schemas.student import StudentCreate, StudentUpdate, StudentResponse
-from app.api.deps import get_current_faculty_or_admin, get_current_active_admin
+from app.api.deps import get_current_faculty_or_admin, get_current_active_admin, get_current_user
 
 router = APIRouter()
+
+
+@router.get("/portal/me")
+def get_student_portal_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Dedicated endpoint for students to view their own attendance metrics,
+    subject-wise breakdown, eligibility, and period-wise attendance logs.
+    """
+    student = db.query(Student).filter(Student.email.ilike(current_user.email)).first()
+    if not student:
+        # If user is admin/faculty previewing portal, grab the first student as sample
+        if current_user.role in (UserRole.ADMIN, UserRole.FACULTY):
+            student = db.query(Student).first()
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student profile associated with this account not found",
+            )
+
+    has_emb = db.query(FaceEmbedding).filter(FaceEmbedding.student_id == student.id).count() > 0
+
+    # Fetch all attendance records for this student
+    records = (
+        db.query(Attendance)
+        .filter(Attendance.student_id == student.id)
+        .order_by(desc(Attendance.date), desc(Attendance.period_id))
+        .all()
+    )
+
+    total_classes = len(records)
+    attended_classes = sum(1 for r in records if r.status in ("PRESENT", "LATE"))
+    absent_classes = sum(1 for r in records if r.status == "ABSENT")
+    attendance_pct = round((attended_classes / total_classes * 100), 1) if total_classes > 0 else 100.0
+    is_eligible = attendance_pct >= 75.0
+
+    # Subject-wise aggregation
+    subjects = db.query(Subject).all()
+    subject_map = {s.id: s for s in subjects}
+    subject_stats = {}
+
+    for r in records:
+        sid = r.subject_id
+        if sid not in subject_stats:
+            sub = subject_map.get(sid)
+            subject_stats[sid] = {
+                "subject_id": sid,
+                "name": sub.name if sub else f"Subject #{sid}",
+                "code": sub.code if sub else f"SUB{sid}",
+                "total": 0,
+                "attended": 0,
+                "absent": 0,
+            }
+        subject_stats[sid]["total"] += 1
+        if r.status in ("PRESENT", "LATE"):
+            subject_stats[sid]["attended"] += 1
+        else:
+            subject_stats[sid]["absent"] += 1
+
+    subject_breakdown = []
+    for sid, sdata in subject_stats.items():
+        pct = round((sdata["attended"] / sdata["total"] * 100), 1) if sdata["total"] > 0 else 100.0
+        subject_breakdown.append({
+            **sdata,
+            "percentage": pct,
+            "status": "Safe" if pct >= 75.0 else "Shortage Warning",
+        })
+
+    # Detailed history logs (latest 50)
+    history = []
+    for r in records[:50]:
+        sub = subject_map.get(r.subject_id)
+        history.append({
+            "id": r.id,
+            "date": r.date.strftime("%Y-%m-%d"),
+            "period_name": r.period.name if r.period else f"Period {r.period_id}",
+            "period_number": r.period.period_number if r.period else r.period_id,
+            "subject_name": sub.name if sub else "N/A",
+            "subject_code": sub.code if sub else "N/A",
+            "status": r.status,
+            "confidence": round(r.confidence, 2) if r.confidence else None,
+            "verification_method": r.verification_method,
+            "timestamp": r.timestamp.strftime("%I:%M:%S %p") if r.timestamp else "",
+        })
+
+    return {
+        "student": {
+            "id": student.id,
+            "reg_no": student.reg_no,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "full_name": student.full_name,
+            "email": student.email,
+            "class_section": student.class_section.name if student.class_section else "N/A",
+            "department": student.class_section.department if student.class_section else "CSE",
+            "semester": student.class_section.semester if student.class_section else 6,
+            "has_face_registered": has_emb,
+        },
+        "metrics": {
+            "total_classes": total_classes,
+            "attended_classes": attended_classes,
+            "absent_classes": absent_classes,
+            "attendance_percentage": attendance_pct,
+            "is_eligible": is_eligible,
+            "threshold_required": 75.0,
+            "status_label": "Eligible for End-Sem Examinations" if is_eligible else "Attendance Shortage (<75%)",
+        },
+        "subject_breakdown": subject_breakdown,
+        "history": history,
+    }
 
 
 @router.get("/", response_model=List[StudentResponse])
@@ -78,6 +195,19 @@ def create_student(
     db.add(student)
     db.commit()
     db.refresh(student)
+
+    # Automatically create student login account
+    existing_u = db.query(User).filter(User.email == student.email).first()
+    if not existing_u:
+        stu_user = User(
+            email=student.email,
+            hashed_password=get_password_hash("Student@123"),
+            full_name=student.full_name,
+            role=UserRole.STUDENT,
+            is_active=True,
+        )
+        db.add(stu_user)
+        db.commit()
 
     return {
         "id": student.id,

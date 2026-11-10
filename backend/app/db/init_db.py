@@ -206,8 +206,21 @@ def init_db(db: Session) -> None:
             )
             db.add(st)
             student_count += 1
+
+        # Ensure student User login account exists
+        stu_user = db.query(User).filter(User.email == email).first()
+        if not stu_user:
+            stu_user = User(
+                email=email,
+                hashed_password=get_password_hash("Student@123"),
+                full_name=f"{fn} {ln}",
+                role=UserRole.STUDENT,
+                is_active=True,
+            )
+            db.add(stu_user)
+
     db.commit()
-    print(f"[+] Sample students registered: {student_count} students in CSE-6A")
+    print(f"[+] Sample students registered: {student_count} students in CSE-6A (Student accounts active)")
 
 
 if __name__ == "__main__":

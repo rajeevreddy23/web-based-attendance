@@ -3,11 +3,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-interface UserProfile {
+export interface UserProfile {
   id?: number;
   email: string;
   full_name: string;
-  role: "admin" | "faculty";
+  role: "admin" | "faculty" | "student";
+  student_id?: number;
+  reg_no?: string;
 }
 
 interface AuthContextType {
@@ -52,7 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem("user", JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-    router.push("/dashboard");
+    if (newUser.role === "student") {
+      router.push("/portal");
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   const logout = () => {

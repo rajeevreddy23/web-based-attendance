@@ -16,7 +16,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      if (user.role === "student") {
+        router.push("/portal");
+      } else {
+        router.push("/dashboard");
+      }
     }
   }, [user, router]);
 
@@ -28,9 +32,11 @@ export default function LoginPage() {
     try {
       const data = await apiRequest<{
         access_token: string;
-        role: "admin" | "faculty";
+        role: "admin" | "faculty" | "student";
         full_name: string;
         email: string;
+        student_id?: number;
+        reg_no?: string;
       }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
@@ -40,21 +46,26 @@ export default function LoginPage() {
         email: data.email,
         full_name: data.full_name,
         role: data.role,
+        student_id: data.student_id,
+        reg_no: data.reg_no,
       });
     } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || "Invalid credentials. Check email/roll number and password.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickLogin = (role: "admin" | "faculty") => {
+  const handleQuickLogin = (role: "admin" | "faculty" | "student") => {
     if (role === "admin") {
       setEmail("admin@college.edu");
       setPassword("Admin@123");
-    } else {
+    } else if (role === "faculty") {
       setEmail("dr.sharma@college.edu");
       setPassword("Faculty@123");
+    } else {
+      setEmail("21CS001");
+      setPassword("Student@123");
     }
   };
 
@@ -68,7 +79,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">SmartAttend Portal</h1>
           <p className="text-indigo-200 text-xs mt-1">
-            Real-Time Period-Wise Facial Recognition System
+            Real-Time Facial Recognition Attendance System
           </p>
         </div>
 
@@ -84,16 +95,16 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Institutional Email
+                Email or Roll Number
               </label>
               <div className="relative">
                 <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@college.edu"
+                  placeholder="admin@college.edu or 21CS001"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
                 />
               </div>
@@ -121,7 +132,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
             >
-              <span>{loading ? "Authenticating..." : "Sign In to Dashboard"}</span>
+              <span>{loading ? "Authenticating..." : "Sign In"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -129,22 +140,29 @@ export default function LoginPage() {
           {/* Quick Demo Pre-fill */}
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">
-              Capstone Demo Quick Login
+              One-Click Role Login
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin("admin")}
-                className="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-center"
+                className="px-2 py-2 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-center"
               >
-                Admin (Full Access)
+                Host / Admin
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin("faculty")}
-                className="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-center"
+                className="px-2 py-2 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-center"
               >
-                Faculty (ML Professor)
+                Professor
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin("student")}
+                className="px-2 py-2 text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg transition-colors text-center border border-indigo-200/50"
+              >
+                Student (Aarav)
               </button>
             </div>
           </div>
