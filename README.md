@@ -19,7 +19,7 @@ For instant setup and startup without manual terminal commands:
 - **First-Time Setup**: Double-click [`setup.bat`](setup.bat)
   - Automatically verifies Python & Node.js, configures virtual environments, installs Python & npm packages, and initialises the database with pre-trained SSA-SVM weights.
 - **Run the System**: Double-click [`start.bat`](start.bat)
-  - Concurrently boots the FastAPI backend on `http://localhost:8000` and the Next.js frontend on `http://localhost:3000`.
+  - Concurrently boots the FastAPI backend on `http://localhost:8000` and the Next.js frontend on `http://localhost:3005`.
 
 ---
 
@@ -146,7 +146,7 @@ d:\web based attendance\
    ```
 
 3. **Open the Dashboard in your browser:**
-   `http://localhost:3000`
+   `http://localhost:3005`
 
 ---
 
@@ -214,7 +214,7 @@ To launch the complete multi-container stack (PostgreSQL + FastAPI + Next.js):
 ```bash
 docker-compose up --build -d
 ```
-- Dashboard: `http://localhost:3000`
+- Dashboard: `http://localhost:3005`
 - API Backend: `http://localhost:8000`
 - Database: `localhost:5432`
 
@@ -226,7 +226,7 @@ docker-compose up --build -d
 |---|---|---|
 | **Camera not opening (`cv2.VideoCapture(0)`)** | Webcam in use by Zoom/Teams or camera permissions disabled. | 1. Close video conferencing apps.<br>2. Windows Settings $\rightarrow$ Privacy & Security $\rightarrow$ Camera $\rightarrow$ Allow desktop apps.<br>3. Change `CAMERA_INDEX=1` in `.env` if using USB camera. |
 | **Low recognition accuracy** | Extreme lighting changes or low training frames. | 1. Capture 20+ face frames per student with slight head angle variations.<br>2. Click **"Train SSA-SVM Model"** in the Students tab to re-run optimization. |
-| **CORS errors in browser console** | Frontend origin missing from backend CORS list. | Check `BACKEND_CORS_ORIGINS` in `.env`. Ensure `http://localhost:3000` is included. |
+| **CORS errors in browser console** | Frontend origin missing from backend CORS list. | Check `BACKEND_CORS_ORIGINS` in `.env`. Ensure `http://localhost:3005` is included. |
 | **`IntegrityError: UNIQUE constraint failed`** | Multiple simultaneous recognition requests for same period. | This is expected and safe: the database constraint guarantees zero duplicate attendance records under high concurrency. |
 
 ---
