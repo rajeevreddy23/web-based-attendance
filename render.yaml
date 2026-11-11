@@ -17,7 +17,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: BACKEND_CORS_ORIGINS
-        value: "*"
+        value: '["*"]'
       - key: CAMERA_INDEX
         value: "0"
       - key: PROCESS_EVERY_N_FRAMES
