@@ -2,7 +2,7 @@ services:
   - type: web
     name: attendance-backend
     env: docker
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/Dockerfile
     dockerContext: backend
     plan: free
     region: oregon
@@ -34,6 +34,6 @@ services:
 databases:
   - name: attendance-db
     databaseName: attendance_db
-    user: postgres
+    user: attendance_user
     plan: free
     region: oregon
