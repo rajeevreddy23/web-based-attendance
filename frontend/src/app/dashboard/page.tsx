@@ -160,13 +160,15 @@ export default function DashboardPage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480 },
       });
+      setIsCameraActive(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-        setCameraFeedback("Webcam active. Click 'Take Attendance' or turn on 'Auto Scanning'.");
+        videoRef.current.play().catch(() => {});
       }
-    } catch (err) {
-      alert("Unable to access local webcam. Please allow camera permissions in your browser.");
+      setCameraFeedback("Webcam active. Click 'Take Attendance' or turn on 'Auto Scanning'.");
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      alert("Unable to access local webcam. Please allow camera permissions in your browser and ensure no other application is using it.");
     }
   };
 
@@ -506,19 +508,20 @@ export default function DashboardPage() {
 
           {/* Video Aspect Canvas Area */}
           <div className="relative bg-slate-950 aspect-video flex items-center justify-center overflow-hidden">
-            {isCameraActive ? (
-              <>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                <canvas ref={canvasRef} className="hidden" />
-                <canvas ref={overlayCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
-              </>
-            ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${isCameraActive ? "block" : "hidden"}`}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            <canvas
+              ref={overlayCanvasRef}
+              className={`absolute inset-0 w-full h-full pointer-events-none ${isCameraActive ? "block" : "hidden"}`}
+            />
+
+            {!isCameraActive && (
               <div className="text-center p-8">
                 <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-3">
                   <Camera className="w-8 h-8 text-slate-600" />

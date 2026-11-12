@@ -99,21 +99,35 @@ export default function StudentsPage() {
     }
   };
 
-  const handleStartCapture = async (student: Student) => {
+  const handleStartCapture = (student: Student) => {
     setCaptureStudent(student);
     setCapturedImages([]);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 480, height: 480 },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCapturing(true);
-      }
-    } catch (err) {
-      alert("Could not access webcam for biometric face capture.");
-    }
   };
+
+  useEffect(() => {
+    if (!captureStudent) return;
+    let activeStream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: { width: 480, height: 480 } })
+      .then((stream) => {
+        activeStream = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+          setIsCapturing(true);
+        }
+      })
+      .catch((err) => {
+        console.error("Camera access error:", err);
+        alert("Could not access webcam for biometric face capture. Please allow camera permissions in your browser.");
+      });
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [captureStudent]);
 
   const captureFrame = () => {
     if (!videoRef.current || !canvasRef.current) return;

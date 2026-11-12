@@ -146,12 +146,13 @@ export default function AttendancePage() {
 
   const handleAutoMarkAbsent = async () => {
     const periodToMark = periodFilter || "1";
+    const sectionToMark = sectionFilter || "1";
     if (!confirm(`Mark unrecorded students as ABSENT for Period ${periodToMark} today?`)) {
       return;
     }
     try {
       const res = await apiRequest<any>(
-        `/attendance/auto-absent?period_id=${periodToMark}&class_section_id=1&attendance_date=${dateFilter}`,
+        `/attendance/auto-absent?period_id=${periodToMark}&class_section_id=${sectionToMark}&attendance_date=${dateFilter}`,
         { method: "POST" }
       );
       alert(res.message);

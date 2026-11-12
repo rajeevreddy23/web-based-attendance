@@ -28,7 +28,7 @@ export async function apiRequest<T>(
   });
 
   if (res.status === 401) {
-    if (typeof window !== "undefined" && !window.location.pathname.includes("/")) {
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/";
