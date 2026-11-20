@@ -95,7 +95,8 @@ export default function DashboardPage() {
         setLiveEvents((prev) => {
           const combined = [...prev];
           events.forEach((ev) => {
-            if (!combined.some((c) => c.student_id === ev.student_id && c.time === ev.time)) {
+            // Deduplicate: Each student appears at most once in live ledger
+            if (!combined.some((c) => c.student_id === ev.student_id)) {
               combined.push(ev);
             }
           });
@@ -137,7 +138,13 @@ export default function DashboardPage() {
         try {
           const data = JSON.parse(event.data);
           if (data.type !== "pong") {
-            setLiveEvents((prev) => [data, ...prev.slice(0, 24)]);
+            setLiveEvents((prev) => {
+              // Ensure student is not duplicated in live list
+              if (prev.some((c) => c.student_id === data.student_id)) {
+                return prev;
+              }
+              return [data, ...prev.slice(0, 24)];
+            });
             fetchDashboardData();
           }
         } catch (e) {}
@@ -239,11 +246,19 @@ export default function DashboardPage() {
           if (res.detections && res.detections.length > 0) {
             res.detections.forEach((d: any) => {
               const [x, y, w, h] = d.bbox;
-              octx.strokeStyle = d.is_unknown ? "#ef4444" : "#10b981";
+              if (d.is_unknown) {
+                octx.strokeStyle = "#ef4444";
+                octx.fillStyle = "rgba(239, 68, 68, 0.85)";
+              } else if (d.already_marked) {
+                octx.strokeStyle = "#0ea5e9"; // Sky-blue for already marked student
+                octx.fillStyle = "rgba(14, 165, 233, 0.85)";
+              } else {
+                octx.strokeStyle = "#10b981"; // Emerald green for newly marked student
+                octx.fillStyle = "rgba(16, 185, 129, 0.85)";
+              }
               octx.lineWidth = 3;
               octx.strokeRect(x, y, w, h);
 
-              octx.fillStyle = d.is_unknown ? "rgba(239, 68, 68, 0.85)" : "rgba(16, 185, 129, 0.85)";
               const labelText = `${d.label} (${(d.confidence * 100).toFixed(0)}%)`;
               octx.font = "bold 13px sans-serif";
               const textWidth = octx.measureText(labelText).width;
@@ -412,6 +427,14 @@ export default function DashboardPage() {
               >
                 {isCameraActive ? "LIVE FEED ACTIVE" : "IDLE"}
               </span>
+
+              {/* Small top loading indicator while frame is scanning / analyzing */}
+              {isScanning && (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
+                  <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />
+                  <span>AI Scanning...</span>
+                </span>
+              )}
             </div>
 
             {/* Camera Action Buttons */}

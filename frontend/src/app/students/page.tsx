@@ -48,6 +48,7 @@ export default function StudentsPage() {
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [uploadingFaces, setUploadingFaces] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -145,10 +146,11 @@ export default function StudentsPage() {
 
   const handleUploadEmbeddings = async () => {
     if (!captureStudent || capturedImages.length < 5) {
-      alert("Please capture at least 5 face frames.");
+      alert("Please capture at least 5 face frames (15 to 20 recommended for high accuracy).");
       return;
     }
     setUploadingFaces(true);
+    setProcessingStatus(`Extracting deep 128-d MobileNet vectors for ${capturedImages.length} face frames...`);
     try {
       await apiRequest("/recognition/register-faces", {
         method: "POST",
@@ -157,10 +159,12 @@ export default function StudentsPage() {
           images_base64: capturedImages,
         }),
       });
-      alert(`Face vectors successfully extracted and stored for ${captureStudent.full_name}. Retraining model to activate new facial profile...`);
       closeCaptureModal();
       await fetchStudents();
-      // Auto train model so new embeddings are active
+
+      // Automatically trigger SSA-SVM hyperparameter training so new profile is immediately active
+      setTraining(true);
+      setProcessingStatus("Optimizing SSA-SVM hyperparameters (C, γ) with new facial profile...");
       try {
         const trainRes = await apiRequest<any>("/recognition/train", { method: "POST" });
         setTrainingMetrics(trainRes.metrics);
@@ -169,6 +173,8 @@ export default function StudentsPage() {
       alert(err.message || "Failed to save embeddings");
     } finally {
       setUploadingFaces(false);
+      setTraining(false);
+      setProcessingStatus(null);
     }
   };
 
@@ -211,10 +217,33 @@ export default function StudentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Top-Right Floating Loading Symbol when updating frames or training */}
+      {(uploadingFaces || training || processingStatus) && (
+        <div className="fixed top-20 right-6 z-50 flex items-center space-x-3 px-4 py-2.5 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-indigo-500/50 animate-pulse">
+          <RefreshCw className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+          <div className="text-xs">
+            <p className="font-bold text-white leading-tight">
+              {uploadingFaces ? "Vectorizing Face Frames..." : "Tuning SSA-SVM Model..."}
+            </p>
+            <p className="text-[10px] text-indigo-300">
+              {processingStatus || "Processing in background..."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Title Bar & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Student Directory</h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl font-bold text-slate-800">Student Directory</h1>
+            {(uploadingFaces || training || processingStatus) && (
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse shadow-sm">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" />
+                <span>{uploadingFaces ? "Extracting Embeddings..." : "Training Model..."}</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Manage student registrations, capture biometric facial profiles, and train SSA-SVM
           </p>
@@ -538,6 +567,17 @@ export default function StudentsPage() {
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-56 h-72 border-2 border-dashed border-emerald-400 rounded-[50%] opacity-70"></div>
               </div>
+
+              {/* Loading State Overlay while extracting vectors */}
+              {uploadingFaces && (
+                <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-white space-y-3 p-6 text-center">
+                  <RefreshCw className="w-8 h-8 animate-spin text-indigo-400" />
+                  <p className="text-sm font-bold text-white">Extracting Deep Face Embeddings...</p>
+                  <p className="text-xs text-slate-300 max-w-xs">
+                    Converting captured frames into 128-dimensional biometric vectors.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

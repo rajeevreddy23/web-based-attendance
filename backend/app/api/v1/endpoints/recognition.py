@@ -217,6 +217,7 @@ async def recognize_single_frame(
             confidence = 0.96
             cos_dist = 0.12
 
+        is_already_marked = False
         if student_id:
             st = db.query(Student).filter(Student.id == student_id).first()
             if st:
@@ -231,29 +232,40 @@ async def recognize_single_frame(
                     marked_by=current_user.email,
                     period_id=req.period_id,
                 )
-                attendance_events.append({
-                    "student_id": st.id,
-                    "reg_no": st.reg_no,
-                    "student_name": st.full_name,
-                    "attendance_recorded": success,
-                    "message": msg,
-                    "status": record.status if record else "ALREADY_RECORDED",
-                })
-                # Broadcast real-time event to WebSocket
-                await ws_manager.broadcast_event({
-                    "student_id": st.id,
-                    "reg_no": st.reg_no,
-                    "student_name": st.full_name,
-                    "confidence": round(confidence, 2),
-                    "time": datetime.now().strftime("%I:%M:%S %p"),
-                    "status": record.status if record else "PRESENT",
-                    "period_name": record.period.name if record and record.period else "Class Period",
-                    "subject_code": record.subject.code if record and record.subject else "CS601",
-                })
+                if success:
+                    # ONLY record and broadcast if attendance was newly committed for this period
+                    attendance_events.append({
+                        "student_id": st.id,
+                        "reg_no": st.reg_no,
+                        "student_name": st.full_name,
+                        "attendance_recorded": True,
+                        "message": msg,
+                        "status": record.status if record else "PRESENT",
+                    })
+                    # Broadcast real-time event to WebSocket
+                    await ws_manager.broadcast_event({
+                        "student_id": st.id,
+                        "reg_no": st.reg_no,
+                        "student_name": st.full_name,
+                        "confidence": round(confidence, 2),
+                        "time": datetime.now().strftime("%I:%M:%S %p"),
+                        "status": record.status if record else "PRESENT",
+                        "period_name": record.period.name if record and record.period else "Class Period",
+                        "subject_code": record.subject.code if record and record.subject else "CS601",
+                    })
+                else:
+                    is_already_marked = ("already recorded" in msg.lower())
+
+        label_display = "Unknown Face"
+        if student_id:
+            if is_already_marked:
+                label_display = f"{student_name} (Already Marked)"
+            else:
+                label_display = f"{student_name} ({reg_no})"
 
         output_boxes.append({
             "bbox": [int(x) for x in bbox],
-            "label": f"{student_name} ({reg_no})" if student_id else "Unknown Face",
+            "label": label_display,
             "student_id": student_id,
             "student_name": student_name,
             "reg_no": reg_no,
@@ -261,9 +273,18 @@ async def recognize_single_frame(
             "cosine_distance": round(cos_dist, 3),
             "is_confirmed": student_id is not None,
             "is_unknown": student_id is None,
+            "already_marked": is_already_marked,
         })
 
-    summary_msg = attendance_events[0]["message"] if attendance_events else ("Face detected, but not matched to enrolled student roster." if output_boxes else "No face detected")
+    if attendance_events:
+        summary_msg = f"Attendance marked for: {', '.join(e['student_name'] for e in attendance_events)}"
+    elif any(box.get("already_marked") for box in output_boxes):
+        marked_names = [box["student_name"] for box in output_boxes if box.get("already_marked")]
+        summary_msg = f"{', '.join(marked_names)} is already marked present for this period. Attendance not duplicated."
+    elif output_boxes:
+        summary_msg = "Face detected, but not matched to enrolled student roster."
+    else:
+        summary_msg = "No face detected in camera frame."
 
     return {
         "faces_detected": len(output_boxes),
